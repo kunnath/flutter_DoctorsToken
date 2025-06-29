@@ -273,6 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     _buildDemoCredentialRow('Admin', 'admin@healthcare.com', 'admin123'),
                     _buildDemoCredentialRow('Patient', 'john.smith@email.com', 'patient123'),
                     _buildDemoCredentialRow('Doctor', 'sarah.johnson@citygeneralhospital.com', 'doctor123'),
+                    _buildDemoCredentialRow('Doctor', 'doctor@gmail.com', 'admin123'),
                   ],
                 ),
               ),

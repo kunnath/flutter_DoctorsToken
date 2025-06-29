@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'database_helper.dart';
 import 'login_screen.dart';
 import 'user_model.dart';
@@ -12,18 +13,42 @@ class DoctorDashboard extends StatefulWidget {
   State<DoctorDashboard> createState() => _DoctorDashboardState();
 }
 
-class _DoctorDashboardState extends State<DoctorDashboard> {
+class _DoctorDashboardState extends State<DoctorDashboard> with WidgetsBindingObserver {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
   List<Map<String, dynamic>> _appointments = [];
   bool _isLoading = true;
   int _pendingCount = 0;
   int _todayCount = 0;
   int _totalPatients = 0;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadDashboardData();
+    _startPeriodicRefresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when app comes back to foreground
+      _loadDashboardData();
+    }
+  }
+
+  void _startPeriodicRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _loadDashboardData();
+    });
   }
 
   Future<void> _loadDashboardData() async {
@@ -370,7 +395,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                         ),
                       ),
                       Text(
-                        '${appointment['appointment_date']} at ${appointment['appointment_time']}',
+                        '${appointment['appointment_date']} at ${appointment['time_slot']}',
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                     ],
@@ -458,7 +483,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${appointment['appointment_date']} at ${appointment['appointment_time']}'),
+            Text('${appointment['appointment_date']} at ${appointment['time_slot']}'),
             Text('Status: ${appointment['status'].toUpperCase()}'),
             Text('Reason: ${appointment['reason']}'),
           ],
@@ -516,15 +541,44 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
   }
 
   void _approveAppointment(Map<String, dynamic> appointment) async {
-    await _databaseHelper.updateAppointmentStatus(
-      appointment['id'],
-      'approved',
-      doctorNotes: 'AppointmentModel approved by doctor',
-    );
-    _loadDashboardData();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('AppointmentModel approved successfully')),
-    );
+    try {
+      print('Attempting to approve appointment: ${appointment['id']}');
+      
+      await _databaseHelper.updateAppointmentStatus(
+        appointment['id'],
+        'approved',
+        doctorNotes: 'AppointmentModel approved by doctor',
+      );
+      
+      print('Appointment status updated successfully');
+      
+      // Create notification for patient
+      await _databaseHelper.createNotification(
+        appointment['patient_id'],
+        'Appointment Approved',
+        'Your appointment on ${appointment['appointment_date']} at ${appointment['time_slot']} has been approved.',
+        'appointment_status',
+        appointment['id'],
+      );
+      
+      print('Notification created for patient');
+      
+      // Immediate refresh
+      await _loadDashboardData();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment approved successfully')),
+        );
+      }
+    } catch (e) {
+      print('Error approving appointment: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error approving appointment: $e')),
+        );
+      }
+    }
   }
 
   void _rejectAppointment(Map<String, dynamic> appointment) {
@@ -556,18 +610,47 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(context);
-                await _databaseHelper.updateAppointmentStatus(
-                  appointment['id'],
-                  'cancelled',
-                  doctorNotes: noteController.text.isNotEmpty 
-                      ? noteController.text 
-                      : 'AppointmentModel rejected by doctor',
-                );
-                _loadDashboardData();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('AppointmentModel rejected')),
-                );
+                try {
+                  Navigator.pop(context);
+                  print('Attempting to reject appointment: ${appointment['id']}');
+                  
+                  await _databaseHelper.updateAppointmentStatus(
+                    appointment['id'],
+                    'cancelled',
+                    doctorNotes: noteController.text.isNotEmpty 
+                        ? noteController.text 
+                        : 'AppointmentModel rejected by doctor',
+                  );
+                  
+                  print('Appointment status updated to cancelled');
+                  
+                  // Create notification for patient
+                  await _databaseHelper.createNotification(
+                    appointment['patient_id'],
+                    'Appointment Rejected',
+                    'Your appointment on ${appointment['appointment_date']} at ${appointment['time_slot']} has been rejected. Reason: ${noteController.text.isNotEmpty ? noteController.text : 'Not specified'}',
+                    'appointment_status',
+                    appointment['id'],
+                  );
+                  
+                  print('Notification created for patient rejection');
+                  
+                  // Immediate refresh
+                  await _loadDashboardData();
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Appointment rejected')),
+                    );
+                  }
+                } catch (e) {
+                  print('Error rejecting appointment: $e');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error rejecting appointment: $e')),
+                    );
+                  }
+                }
               },
               child: const Text('Reject'),
             ),
@@ -601,7 +684,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
               Text('Patient: ${appointment['patient_name']}'),
               Text('Phone: ${appointment['patient_phone']}'),
               Text('Date: ${appointment['appointment_date']}'),
-              Text('Time: ${appointment['appointment_time']}'),
+              Text('Time: ${appointment['time_slot']}'),
               Text('Status: ${appointment['status'].toUpperCase()}'),
               Text('Token: ${appointment['token']}'),
               Text('Reason: ${appointment['reason']}'),

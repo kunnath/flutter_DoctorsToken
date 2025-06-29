@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'database_helper.dart';
 import 'login_screen.dart';
 import 'screens/patient_screens/book_appointment_screen.dart';
@@ -17,22 +18,49 @@ class PatientDashboard extends StatefulWidget {
   State<PatientDashboard> createState() => _PatientDashboardState();
 }
 
-class _PatientDashboardState extends State<PatientDashboard> {
+class _PatientDashboardState extends State<PatientDashboard> with WidgetsBindingObserver {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
   List<Map<String, dynamic>> _appointments = [];
   List<DoctorModel> _doctors = [];
   bool _isLoading = true;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadDashboardData();
+    _startPeriodicRefresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when app comes back to foreground
+      _loadDashboardData();
+    }
+  }
+
+  void _startPeriodicRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _loadDashboardData();
+    });
   }
 
   Future<void> _loadDashboardData() async {
     try {
       final appointments = await _databaseHelper.getAppointmentsByPatient(widget.user['id']);
       final doctors = await _databaseHelper.getAllDoctors();
+      
+      // Check for new notifications
+      await _checkForNewNotifications();
       
       setState(() {
         _appointments = appointments;
@@ -46,6 +74,35 @@ class _PatientDashboardState extends State<PatientDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading data: ${e.toString()}')),
       );
+    }
+  }
+
+  Future<void> _checkForNewNotifications() async {
+    try {
+      final notifications = await _databaseHelper.getNotifications(widget.user['id']);
+      final unreadNotifications = notifications.where((n) => n['is_read'] == 0).toList();
+      
+      if (unreadNotifications.isNotEmpty && mounted) {
+        for (var notification in unreadNotifications.take(1)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(notification['message']),
+              backgroundColor: notification['type'] == 'appointment_status' 
+                  ? Colors.green 
+                  : Colors.blue,
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: 'Mark Read',
+                onPressed: () {
+                  _databaseHelper.markNotificationAsRead(notification['id']);
+                },
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Silently handle notification errors
     }
   }
 

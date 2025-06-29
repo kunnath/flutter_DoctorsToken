@@ -365,7 +365,7 @@ class DatabaseHelper {
       JOIN users u ON d.user_id = u.id
       JOIN hospitals h ON a.hospital_id = h.id
       WHERE a.patient_id = ?
-      ORDER BY a.appointment_date DESC, a.appointment_time DESC
+      ORDER BY a.appointment_date DESC, a.time_slot DESC
     ''', [patientId]);
   }
 
@@ -376,7 +376,7 @@ class DatabaseHelper {
       FROM appointments a
       JOIN users u ON a.patient_id = u.id
       WHERE a.doctor_id = ? AND a.status != 'cancelled'
-      ORDER BY a.appointment_date ASC, a.appointment_time ASC
+      ORDER BY a.appointment_date ASC, a.time_slot ASC
     ''', [doctorId]);
   }
 
@@ -388,7 +388,7 @@ class DatabaseHelper {
     };
     
     if (doctorNotes != null) {
-      updateData['doctor_notes'] = doctorNotes;
+      updateData['follow_up_notes'] = doctorNotes;
     }
     
     await db.update(
@@ -699,7 +699,7 @@ class DatabaseHelper {
       'updated_at': DateTime.now().toIso8601String(),
     };
     
-    if (notes != null) updateData['doctor_notes'] = notes;
+    if (notes != null) updateData['follow_up_notes'] = notes;
     
     if (newStatus == 'approved') {
       updateData['approved_at'] = DateTime.now().toIso8601String();
@@ -1065,5 +1065,26 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) {
       return AppointmentModel.fromMap(maps[i]);
     });
+  }
+
+  Future<List<Map<String, dynamic>>> getNotifications(int userId) async {
+    final db = await database;
+    return await db.query(
+      'notifications',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'created_at DESC',
+      limit: 10,
+    );
+  }
+
+  Future<void> markNotificationAsRead(int notificationId) async {
+    final db = await database;
+    await db.update(
+      'notifications',
+      {'is_read': 1},
+      where: 'id = ?',
+      whereArgs: [notificationId],
+    );
   }
 }
