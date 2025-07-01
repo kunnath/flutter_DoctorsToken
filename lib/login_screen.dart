@@ -42,6 +42,10 @@ class _LoginScreenState extends State<LoginScreen> {
         );
 
         if (user != null) {
+          // Debug: Print user data to see what's being returned
+          print('User data from authentication: $user');
+          print('User full_name: ${user['full_name']}');
+          
           // Successful login - route based on user role
           String role = user['role'] ?? 'patient';
           

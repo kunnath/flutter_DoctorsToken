@@ -108,9 +108,13 @@ class _PatientDashboardState extends State<PatientDashboard> with WidgetsBinding
 
   @override
   Widget build(BuildContext context) {
+    // Debug: Print user data to see what's available
+    print('Patient dashboard user data: ${widget.user}');
+    print('User full_name value: ${widget.user['full_name']}');
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text('Welcome, ${widget.user['full_name']}'),
+        title: Text('Welcome, ${widget.user['full_name'] ?? 'Guest'}'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         automaticallyImplyLeading: false,
         actions: [
