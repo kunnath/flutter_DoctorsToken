@@ -388,7 +388,7 @@ class DatabaseHelper {
     };
     
     if (doctorNotes != null) {
-      updateData['follow_up_notes'] = doctorNotes;
+      updateData['doctor_notes'] = doctorNotes;
     }
     
     await db.update(
@@ -699,7 +699,7 @@ class DatabaseHelper {
       'updated_at': DateTime.now().toIso8601String(),
     };
     
-    if (notes != null) updateData['follow_up_notes'] = notes;
+    if (notes != null) updateData['doctor_notes'] = notes;
     
     if (newStatus == 'approved') {
       updateData['approved_at'] = DateTime.now().toIso8601String();

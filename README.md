@@ -28,7 +28,8 @@
 - [🔐 Admin Control Panel](#-admin-control-panel)
 - [🏥 Advanced System Features](#-advanced-system-features)
 - [🚀 Getting Started](#-getting-started)
-- [👩‍💻 Technical Architecture](#-technical-architecture)
+- [� Android Emulator Setup & Management](#-android-emulator-setup--management)
+- [�👩‍💻 Technical Architecture](#-technical-architecture)
 - [🗄️ Database Schema](#-database-schema)
 - [🔒 Security Features](#-security-features)
 - [📱 Mobile App Features](#-mobile-app-features)
@@ -412,6 +413,250 @@ flutter run -d ios
 # Run on Chrome (web)
 flutter run -d chrome
 ```
+
+## 📱 Android Emulator Setup & Management
+
+### Prerequisites for Android Development
+Before working with Android emulators, ensure you have:
+- **Android Studio** installed with Android SDK
+- **Android SDK Command-line Tools** 
+- **Intel HAXM** (for Intel processors) or **Android Emulator Hypervisor Driver** (for AMD)
+- **Sufficient RAM** (at least 8GB recommended, 16GB preferred)
+- **Adequate storage space** (at least 10GB free)
+
+### 🔧 Essential Android Emulator Commands
+
+#### 1. Check Available Emulators
+```bash
+# List all installed emulators
+emulator -list-avds
+
+# Alternative using avdmanager
+avdmanager list avd
+
+# Check emulator version
+emulator -version
+```
+
+#### 2. Start Android Emulator
+```bash
+# Start specific emulator by name
+emulator -avd Pixel_3a_API_34
+
+# Start emulator in background
+emulator -avd Pixel_3a_API_34 &
+
+# Start with increased RAM (4GB)
+emulator -avd Pixel_3a_API_34 -memory 4096
+
+# Start with GPU acceleration
+emulator -avd Pixel_3a_API_34 -gpu host
+
+# Start emulator with specific window size
+emulator -avd Pixel_3a_API_34 -scale 0.5
+```
+
+#### 3. Advanced Emulator Options
+```bash
+# Start with network speed simulation
+emulator -avd Pixel_3a_API_34 -netspeed full
+
+# Start with custom data partition size
+emulator -avd Pixel_3a_API_34 -partition-size 2048
+
+# Start with writable system partition
+emulator -avd Pixel_3a_API_34 -writable-system
+
+# Start with specific DNS servers
+emulator -avd Pixel_3a_API_34 -dns-server 8.8.8.8,8.8.4.4
+
+# Start emulator without audio
+emulator -avd Pixel_3a_API_34 -no-audio
+```
+
+#### 4. Emulator Management Commands
+```bash
+# Kill all running emulators
+adb devices | grep emulator | cut -f1 | xargs -I {} adb -s {} emu kill
+
+# Kill specific emulator
+adb -s emulator-5554 emu kill
+
+# Restart ADB server
+adb kill-server && adb start-server
+
+# Check running emulators
+adb devices
+```
+
+#### 5. Create New Android Virtual Device (AVD)
+```bash
+# List available system images
+avdmanager list targets
+
+# Create new AVD
+avdmanager create avd -n "MyEmulator" -k "system-images;android-34;google_apis;x86_64" -d "pixel_3a"
+
+# Create AVD with custom configuration
+avdmanager create avd -n "HealthcareApp_Test" -k "system-images;android-34;google_apis;x86_64" -d "pixel_3a" --sdcard 512M
+```
+
+#### 6. Delete and Manage AVDs
+```bash
+# Delete an AVD
+avdmanager delete avd -n "MyEmulator"
+
+# Move AVD to different location
+avdmanager move avd -n "MyEmulator" -p /new/path/
+
+# List installed SDK packages
+sdkmanager --list | grep system-images
+```
+
+### 🚀 Quick Start Commands for Healthcare App
+
+#### Option 1: Use Existing Emulator
+```bash
+# Check available emulators
+flutter emulators
+
+# Launch emulator from Flutter
+flutter emulators --launch Pixel_3a_API_34
+
+# Run the healthcare app
+cd /path/to/healthcare-app
+flutter run
+```
+
+#### Option 2: Direct Emulator Launch
+```bash
+# Start emulator directly
+emulator -avd Pixel_3a_API_34 -gpu host -memory 4096 &
+
+# Wait for emulator to boot, then run app
+flutter devices
+flutter run -d emulator-5554
+```
+
+### 🐛 Troubleshooting Common Issues
+
+#### Emulator Won't Start
+```bash
+# Check if HAXM is installed (Intel processors)
+haxm check
+
+# Check available system resources
+emulator -accel-check
+
+# Start with verbose logging
+emulator -avd Pixel_3a_API_34 -verbose
+
+# Start in safe mode (software rendering)
+emulator -avd Pixel_3a_API_34 -gpu swiftshader_indirect
+```
+
+#### Performance Issues
+```bash
+# Increase emulator RAM
+emulator -avd Pixel_3a_API_34 -memory 6144
+
+# Use host GPU
+emulator -avd Pixel_3a_API_34 -gpu host
+
+# Disable animations
+adb shell settings put global window_animation_scale 0
+adb shell settings put global transition_animation_scale 0
+adb shell settings put global animator_duration_scale 0
+```
+
+#### Network Issues
+```bash
+# Check network connectivity
+adb shell ping google.com
+
+# Reset network settings
+adb shell am broadcast -a android.intent.action.MASTER_CLEAR
+
+# Configure proxy (if needed)
+emulator -avd Pixel_3a_API_34 -http-proxy proxy.company.com:8080
+```
+
+#### Storage Issues
+```bash
+# Clear emulator data
+emulator -avd Pixel_3a_API_34 -wipe-data
+
+# Check available space
+adb shell df -h
+
+# Clean up system
+adb shell pm trim-caches 1000000000
+```
+
+### 📊 Recommended Emulator Configuration for Healthcare App
+
+#### Optimal Settings
+```bash
+# Recommended emulator start command for development
+emulator -avd Pixel_3a_API_34 \
+  -memory 4096 \
+  -gpu host \
+  -netspeed full \
+  -no-audio \
+  -partition-size 4096 \
+  -sdcard sdcard.img
+```
+
+#### For Different Development Scenarios
+
+**Development & Testing:**
+```bash
+emulator -avd Pixel_3a_API_34 -memory 4096 -gpu host
+```
+
+**Performance Testing:**
+```bash
+emulator -avd Pixel_3a_API_34 -memory 2048 -netspeed edge -netdelay gsm
+```
+
+**Feature Testing:**
+```bash
+emulator -avd Pixel_3a_API_34 -memory 6144 -gpu host -camera-back webcam0
+```
+
+### 🔄 Flutter-Specific Emulator Commands
+
+```bash
+# List Flutter-recognized devices
+flutter devices
+
+# List available emulators
+flutter emulators
+
+# Launch specific emulator
+flutter emulators --launch Pixel_3a_API_34
+
+# Run app with specific device
+flutter run -d emulator-5554
+
+# Hot reload (while app is running)
+r
+
+# Hot restart (while app is running)
+R
+
+# Quit app
+q
+```
+
+### 💡 Pro Tips for Healthcare App Development
+
+1. **Use hardware acceleration** for smooth animations
+2. **Allocate sufficient memory** for location services
+3. **Enable host GPU** for better UI performance
+4. **Test on multiple API levels** (29, 30, 33, 34)
+5. **Use physical devices** for final testing
+6. **Monitor resource usage** during testing
 
 #### 5. Build for Production
 ```bash
